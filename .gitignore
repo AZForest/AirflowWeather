@@ -1,2 +1,3 @@
 venv/
 dags/__pycache__
+.env
