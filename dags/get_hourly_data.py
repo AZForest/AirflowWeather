@@ -1,6 +1,6 @@
 from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
-import requests
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 # import openmeteo_requests
 
 from datetime import datetime
@@ -11,6 +11,9 @@ import subprocess
 import json
 import boto3
 import tempfile
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path="./.env")
 
 @dag(
     "fetch_current_weather_data",
@@ -52,9 +55,6 @@ def api_pipeline():
                 # if not os.path.exists(directory):
                 #     os.makedirs(directory)
 
-                # with open(file_path, "w") as jsonfile:
-                #     jsonfile.write(result.stdout)
-
                 with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as temp_file:
                     temp_file.write(result.stdout)
                     temp_path = temp_file.name
@@ -78,7 +78,6 @@ def api_pipeline():
                     os.unlink(temp_path)
 
                 print(f"Written to file: {key}")
-                # print(f"Written to file: {file_path}")
             else:
                 print(f"Curl failed: {result.stderr}")
                 raise Exception(f"Curl failed with return code {result.returncode}")
@@ -86,6 +85,19 @@ def api_pipeline():
         except Exception as e:
             print(f"Subprocess failed: {e}")
             raise
+
+    spark_job = SparkSubmitOperator(
+        task_id="predict_city_with_new_data",
+        application="dags/predict_city.py",
+        name="predict_cit_job",
+        verbose=True,
+        conn_id='spark_weather',
+        env_vars={
+            "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID"),
+            "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
+        },
+        packages="org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.11.1026"
+    )
     
     @task
     def fetch_miami_data():
@@ -100,5 +112,5 @@ def api_pipeline():
         url = "https://api.open-meteo.com/v1/forecast?latitude=23.13&longitude=82.35&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,cloud_cover,surface_pressure,precipitation,rain,showers,weather_code,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m&temperature_unit=fahrenheit"
         custom_fetch("havana", url)
 
-    fetch_miami_data() >> fetch_nassau_data() >> fetch_havana_data()
+    fetch_miami_data() >> fetch_nassau_data() >> fetch_havana_data() >> spark_job
 demo_dag = api_pipeline() 

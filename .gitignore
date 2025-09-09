@@ -1,5 +1,5 @@
 venv/
-dags/__pycache__
+dags/__pycache__/
 .env
 ml/pyspark_test.ipynb
 ml/.ipynb_checkpoints
