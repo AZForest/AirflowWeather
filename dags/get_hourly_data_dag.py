@@ -96,6 +96,9 @@ def api_pipeline():
             "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID"),
             "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
         },
+        application_args=[
+            '{{ execution_date.strftime("%Y-%m-%d_%H%M") }}'
+        ],
         packages="org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.11.1026"
     )
     

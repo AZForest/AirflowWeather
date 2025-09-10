@@ -9,6 +9,7 @@ from datetime import datetime
 import json
 import tempfile
 import subprocess
+import sys
 
 def main():
 
@@ -24,13 +25,15 @@ def main():
     
     # Load Model
     print("Loading current model...")
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    model_path = f"s3a://af-weather-lake-01/models/date={date_str}/model/"
+    # date_str = datetime.now().strftime("%Y-%m-%d")
+    model_path = f"s3a://af-weather-lake-01/models/date=2025-09-09/model/"
     model = PipelineModel.load(model_path)
     
     # Get most recent weather data
     print("Retrieving most recent weather data from S3...")
-    current_time = datetime.now().strftime("%Y-%m-%d_%H%M")
+    # current_time = datetime.now().strftime("%Y-%m-%d_%H%M")
+    current_time = sys.argv[1]
+    print("Current time: ", current_time)
     havana_entry = spark.read.json(f"s3a://af-weather-lake-01/data/weather/date={current_time}/havana")
     nassau_entry = spark.read.json(f"s3a://af-weather-lake-01/data/weather/date={current_time}/nassau")
     miami_entry = spark.read.json(f"s3a://af-weather-lake-01/data/weather/date={current_time}/miami")
@@ -61,7 +64,7 @@ def main():
     # Make Report and convert to json
     report = {
         "model_type": "PipelineModel",
-        "model_location": f"s3a://af-weather-lake-01/models/date={date_str}/model/",
+        "model_location": f"s3a://af-weather-lake-01/models/date=2025-09-09/model/",
         "datetime": current_time,
         "accuracy": f'{accuracy:.2f}%',
         "precision": f'{precision:.2f}%',
